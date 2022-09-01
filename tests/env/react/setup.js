@@ -6,9 +6,49 @@ const { MeiliSearch } = require('meilisearch')
     apiKey: 'masterKey',
   })
 
-  const index = client.index('steam-video-games')
+  const bookDataset = [
+    {
+      id: 123,
+      title: 'Pride and Prejudice',
+      comment: 'A great book',
+      genre: 'romance',
+    },
+    {
+      id: 456,
+      title: 'Le Petit Prince',
+      comment: 'A french book about a prince that walks on little cute planets',
+      genre: 'adventure',
+      isNull: null,
+      isTrue: true,
+    },
+    {
+      id: 2,
+      title: 'Le Rouge et le Noir',
+      comment: 'Another french book',
+      genre: 'romance',
+    },
+    {
+      id: 1,
+      title: 'Alice In Wonderland',
+      comment: 'A weird book',
+      genre: 'adventure',
+    },
+    {
+      id: 1344,
+      title: 'The Hobbit',
+      comment: 'An awesome book',
+      genre: 'sci fi',
+    },
+    {
+      id: 4,
+      title: 'Harry Potter and the Half-Blood Prince',
+      comment: 'The best book',
+      genre: 'fantasy',
+    },
+    { id: 42, title: "The Hitchhiker's Guide to the Galaxy", genre: 'fantasy' },
+  ]
 
-  const dataset = [
+  const gameDataset = [
     {
       id: '10',
       name: 'Counter-Strike',
@@ -234,16 +274,45 @@ const { MeiliSearch } = require('meilisearch')
       genres: ['Action'],
       misc: [],
     },
+    {
+      id: '341',
+      name: 'Whatever Coast',
+      description:
+        'Originally planned as a section of the Highway 17 chapter of Half-Life 2 Lost Coast is a playable technology showcase that introduces High Dynamic Range lighting to the Source engine.',
+      price: '-',
+      image:
+        'http://steam.meilisearch.dev/steam/apps/340/header.jpg?t=1447350821',
+      releaseDate: 'Oct 27 2005',
+      recommendationCount: 4352,
+      platforms: ['X'],
+      players: ['Single player'],
+      genres: ['Action'],
+      misc: [],
+    },
   ]
 
-  await index.updateSettings({
+  // Create video games index
+  const gameIndex = client.index('steam-video-games')
+  await gameIndex.updateSettings({
     searchableAttributes: ['name', 'description'],
     filterableAttributes: ['platforms', 'players', 'genres', 'misc'],
     sortableAttributes: ['recommendationCount'],
   })
 
-  const response = await index.addDocuments(dataset)
+  const gameTaskInfo = await gameIndex.addDocuments(gameDataset)
 
-  const task = await client.waitForTask(response.taskUid)
-  console.log(task)
+  const gameTask = await client.waitForTask(gameTaskInfo.taskUid)
+  console.log(gameTask)
+  // Create book index
+  const bookIndex = client.index('books')
+  await bookIndex.updateSettings({
+    filterableAttributes: ['genre', 'title', 'id'],
+    sortableAttributes: ['id'],
+  })
+
+  const bookTaskInfo = await bookIndex.addDocuments(bookDataset)
+
+  const bookTask = await client.waitForTask(bookTaskInfo.taskUid)
+
+  console.log(bookTask)
 })()

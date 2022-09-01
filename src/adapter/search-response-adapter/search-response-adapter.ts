@@ -13,12 +13,12 @@ import { adaptHits } from './hits-adapter'
  * @param  {MeiliSearchResponse<Record<string} searchResponse
  * @param  {SearchContext} searchContext
  * @param  {PaginationContext} paginationContext
- * @returns {{ results: Array<AlgoliaSearchResponse<T>> }}
+ * @returns {AlgoliaSearchResponse<T>}
  */
 export function adaptSearchResponse<T>(
   searchResponse: MeiliSearchResponse<Record<string, any>>,
   searchContext: SearchContext
-): { results: Array<AlgoliaSearchResponse<T>> } {
+): AlgoliaSearchResponse<T> {
   const searchResponseOptionals: Record<string, any> = {}
 
   const facets = searchResponse.facetDistribution
@@ -51,7 +51,5 @@ export function adaptSearchResponse<T>(
     exhaustiveNbHits: false,
     ...searchResponseOptionals,
   }
-  return {
-    results: [adaptedSearchResponse],
-  }
+  return adaptedSearchResponse
 }

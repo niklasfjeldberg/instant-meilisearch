@@ -15,7 +15,7 @@ import { createPaginationContext } from './pagination-context'
 export function createSearchContext(
   searchRequest: AlgoliaMultipleQueriesQuery,
   options: InstantMeiliSearchOptions,
-  defaultFacetDistribution: FacetDistribution
+  defaultFacetDistributions: Record<string, FacetDistribution>
 ): SearchContext {
   // Split index name and possible sorting rules
   const [indexUid, ...sortByArray] = searchRequest.indexName.split(':')
@@ -27,13 +27,19 @@ export function createSearchContext(
     page: instantSearchParams?.page,
   })
 
+  const getDefaultFacetDistributions = (): FacetDistribution => {
+    if (!defaultFacetDistributions || !defaultFacetDistributions[indexUid]) {
+      return {}
+    }
+    return defaultFacetDistributions[indexUid]
+  }
   const searchContext: SearchContext = {
     ...options,
     ...instantSearchParams,
     sort: sortByArray.join(':') || '',
     indexUid,
     pagination,
-    defaultFacetDistribution: defaultFacetDistribution || {},
+    defaultFacetDistribution: getDefaultFacetDistributions(),
     placeholderSearch: options.placeholderSearch !== false, // true by default
     keepZeroFacets: !!options.keepZeroFacets, // false by default
     finitePagination: !!options.finitePagination, // false by default

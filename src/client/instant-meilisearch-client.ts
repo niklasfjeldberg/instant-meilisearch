@@ -4,18 +4,18 @@ import {
   InstantMeiliSearchInstance,
   AlgoliaSearchResponse,
   AlgoliaMultipleQueriesQuery,
-  SearchContext,
   FacetDistribution,
 } from '../types'
-import {
-  adaptSearchResponse,
-  adaptSearchParams,
-  SearchResolver,
-} from '../adapter'
-import { createSearchContext } from '../contexts'
-import { SearchCache, cacheFirstFacetDistribution } from '../cache/'
+import { search } from '../search'
+import { SearchResolver } from '../adapter'
+import { SearchCache } from '../cache/'
 import { constructClientAgents } from './agents'
 
+interface ClientInterface {
+  name: string
+  age: number
+  greet(greeting: string): string
+}
 /**
  * Instanciate SearchClient required by instantsearch.js.
  *
@@ -25,6 +25,7 @@ import { constructClientAgents } from './agents'
  * @returns {InstantMeiliSearchInstance}
  */
 export function instantMeiliSearch(
+  this: ClientInterface,
   hostUrl: string,
   apiKey = '',
   instantMeiliSearchOptions: InstantMeiliSearchOptions = {}
@@ -39,11 +40,13 @@ export function instantMeiliSearch(
     clientAgents,
   })
 
+  // do the same for facet distribution
   const searchCache = SearchCache()
   // create search resolver with included cache
   const searchResolver = SearchResolver(meilisearchClient, searchCache)
 
-  let defaultFacetDistribution: FacetDistribution
+  let defaultFacetDistributions: Record<string, FacetDistribution>
+  // let defaultFacetDistribution: FacetDistribution
 
   return {
     clearCache: () => searchCache.clearCache(),
@@ -55,40 +58,33 @@ export function instantMeiliSearch(
       instantSearchRequests: readonly AlgoliaMultipleQueriesQuery[]
     ): Promise<{ results: Array<AlgoliaSearchResponse<T>> }> {
       try {
-        const searchRequest = instantSearchRequests[0]
-        const searchContext: SearchContext = createSearchContext(
-          searchRequest,
-          instantMeiliSearchOptions,
-          defaultFacetDistribution
-        )
+        // console.log(JSON.stringify(instantSearchRequests, null, 2))
+        // debugger
+        const indexes: string[] = []
+        const results = []
+        console.log({ instantSearchRequests })
 
-        // Adapt search request to Meilisearch compliant search request
-        const adaptedSearchRequest = adaptSearchParams(searchContext)
+        console.log({ defaultFacetDistributions })
 
-        // Cache first facets distribution of the instantMeilisearch instance
-        // Needed to add in the facetDistribution the fields that were not returned
-        // When the user sets `keepZeroFacets` to true.
-        if (defaultFacetDistribution === undefined) {
-          defaultFacetDistribution = await cacheFirstFacetDistribution(
-            searchResolver,
-            searchContext
-          )
-          searchContext.defaultFacetDistribution = defaultFacetDistribution
+        for (const indexRequest of instantSearchRequests) {
+          // console.log(`INDEXES: ${JSON.stringify(indexes)}`)
+          const searchRequest = indexRequest
+          // console.log({ searchRequest })
+          // console.log(indexes.includes(indexRequest.indexName))
+
+          // Will be removed once disjunctive facet search is introduced
+          if (!indexes.includes(indexRequest.indexName)) {
+            const searchResponse = await search(
+              searchRequest,
+              instantMeiliSearchOptions,
+              defaultFacetDistributions,
+              searchResolver
+            )
+            results.push(searchResponse)
+            indexes.push(indexRequest.indexName)
+          }
         }
-
-        // Search response from Meilisearch
-        const searchResponse = await searchResolver.searchResponse(
-          searchContext,
-          adaptedSearchRequest
-        )
-
-        // Adapt the Meilisearch responsne to a compliant instantsearch.js response
-        const adaptedSearchResponse = adaptSearchResponse<T>(
-          searchResponse,
-          searchContext
-        )
-
-        return adaptedSearchResponse
+        return { results }
       } catch (e: any) {
         console.error(e)
         throw new Error(e)
